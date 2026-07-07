@@ -337,6 +337,26 @@ export async function handleConfirmation(args: {
       oAuthClientId: platformClientParams?.platformClientId,
     });
 
+    const eventTypeInfo: EventTypeInfo = {
+      eventTitle: eventType?.title,
+      eventDescription: eventType?.description,
+      requiresConfirmation: eventType?.requiresConfirmation || null,
+      price: eventType?.price,
+      currency: eventType?.currency,
+      length: eventType?.length,
+    };
+
+    const webhookPayload: EventPayloadType = {
+      ...evt,
+      ...eventTypeInfo,
+      bookingId,
+      eventTypeId: eventType?.id,
+      status: "ACCEPTED",
+      smsReminderNumber: booking.smsReminderNumber || undefined,
+      metadata: meetingUrl ? { videoCallUrl: meetingUrl } : {},
+      ...(platformClientParams ? platformClientParams : {}),
+    };
+
     const scheduleTriggerPromises: Promise<unknown>[] = [];
 
     const updatedBookingsWithCalEventResponses = updatedBookings.map((booking) => {
@@ -357,6 +377,7 @@ export async function handleConfirmation(args: {
             subscriberUrl: subscriber.subscriberUrl,
             subscriber,
             triggerEvent: WebhookTriggerEvents.MEETING_STARTED,
+            webhookData: webhookPayload,
           })
         );
       });
@@ -369,6 +390,7 @@ export async function handleConfirmation(args: {
             subscriberUrl: subscriber.subscriberUrl,
             subscriber,
             triggerEvent: WebhookTriggerEvents.MEETING_ENDED,
+            webhookData: webhookPayload,
           })
         );
       });
@@ -391,33 +413,13 @@ export async function handleConfirmation(args: {
       oAuthClientId: platformClientParams?.platformClientId,
     });
 
-    const eventTypeInfo: EventTypeInfo = {
-      eventTitle: eventType?.title,
-      eventDescription: eventType?.description,
-      requiresConfirmation: eventType?.requiresConfirmation || null,
-      price: eventType?.price,
-      currency: eventType?.currency,
-      length: eventType?.length,
-    };
-
-    const payload: EventPayloadType = {
-      ...evt,
-      ...eventTypeInfo,
-      bookingId,
-      eventTypeId: eventType?.id,
-      status: "ACCEPTED",
-      smsReminderNumber: booking.smsReminderNumber || undefined,
-      metadata: meetingUrl ? { videoCallUrl: meetingUrl } : {},
-      ...(platformClientParams ? platformClientParams : {}),
-    };
-
     const promises = subscribersBookingCreated.map((sub) =>
       sendPayload(
         sub.secret,
         WebhookTriggerEvents.BOOKING_CREATED,
         new Date().toISOString(),
         sub,
-        payload
+        webhookPayload
       ).catch((e) => {
         tracingLogger.error(
           `Error executing webhook for event: ${WebhookTriggerEvents.BOOKING_CREATED}, URL: ${sub.subscriberUrl}, bookingId: ${evt.bookingId}, bookingUid: ${evt.uid}, platformClientId: ${platformClientParams?.platformClientId}`,

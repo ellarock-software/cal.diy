@@ -14,6 +14,7 @@ import type { Prisma, Webhook, Booking, ApiKey } from "@calcom/prisma/client";
 import { BookingStatus, WebhookTriggerEvents } from "@calcom/prisma/enums";
 import { bookingMetadataSchema } from "@calcom/prisma/zod-utils";
 import { DEFAULT_WEBHOOK_VERSION, type WebhookVersion } from "./interface/IWebhookRepository";
+import { buildWebhookRequest, type EventPayloadType } from "./sendPayload";
 
 const SCHEDULING_TRIGGER: WebhookTriggerEvents[] = [
   WebhookTriggerEvents.MEETING_ENDED,
@@ -26,6 +27,55 @@ const NO_SHOW_TRIGGERS: WebhookTriggerEvents[] = [
 ];
 
 const log = logger.getSubLogger({ prefix: ["[node-scheduler]"] });
+
+type ScheduledWebhookBooking = {
+  id: number;
+  startTime: Date;
+  endTime: Date;
+  uid?: string;
+  title?: string;
+  description?: string | null;
+  customInputs?: Prisma.JsonValue;
+  responses?: Prisma.JsonValue;
+  location?: string | null;
+  cancellationReason?: string | null;
+  status?: string | null;
+  smsReminderNumber?: string | null;
+  attendees?: {
+    name: string;
+    email: string;
+    timeZone?: string | null;
+  }[];
+  eventTypeId?: number | null;
+  eventType?: {
+    bookingFields?: Prisma.JsonValue | null;
+    slug?: string | null;
+  } | null;
+};
+
+function buildScheduledWebhookData({
+  booking,
+  webhookData,
+}: {
+  booking: ScheduledWebhookBooking;
+  webhookData: EventPayloadType;
+}): EventPayloadType {
+  return {
+    ...webhookData,
+    bookingId: booking.id,
+    eventTypeId: booking.eventTypeId ?? webhookData.eventTypeId,
+    uid: booking.uid ?? webhookData.uid,
+    title: booking.title ?? webhookData.title,
+    description: booking.description ?? webhookData.description,
+    startTime: dayjs(booking.startTime).utc().format(),
+    endTime: dayjs(booking.endTime).utc().format(),
+    location: booking.location ?? webhookData.location,
+    cancellationReason: booking.cancellationReason ?? webhookData.cancellationReason,
+    status: booking.status ?? webhookData.status,
+    smsReminderNumber: booking.smsReminderNumber ?? webhookData.smsReminderNumber,
+    type: booking.eventType?.slug ?? webhookData.type,
+  };
+}
 
 export async function addSubscription({
   appApiKey,
@@ -111,6 +161,7 @@ export async function addSubscription({
           subscriber: {
             id: createSubscription.id,
             appId: createSubscription.appId,
+            payloadTemplate: createSubscription.payloadTemplate,
           },
           triggerEvent,
         });
@@ -284,17 +335,32 @@ export async function scheduleTrigger({
   subscriberUrl,
   subscriber,
   triggerEvent,
+  webhookData,
   isDryRun = false,
 }: {
-  booking: { id: number; endTime: Date; startTime: Date };
+  booking: ScheduledWebhookBooking;
   subscriberUrl: string;
-  subscriber: { id: string; appId: string | null };
+  subscriber: Pick<Webhook, "id" | "appId"> & { payloadTemplate?: string | null };
   triggerEvent: WebhookTriggerEvents;
+  webhookData?: EventPayloadType;
   isDryRun?: boolean;
 }) {
   if (isDryRun) return;
   try {
-    const payload = JSON.stringify({ triggerEvent, ...booking });
+    const createdAt = new Date().toISOString();
+    const payload = webhookData
+      ? buildWebhookRequest({
+          triggerEvent,
+          createdAt,
+          webhook: {
+            subscriberUrl,
+            appId: subscriber.appId,
+            payloadTemplate: subscriber.payloadTemplate ?? null,
+            version: DEFAULT_WEBHOOK_VERSION,
+          },
+          data: buildScheduledWebhookData({ booking, webhookData }),
+        }).body
+      : JSON.stringify({ triggerEvent, ...booking });
 
     await prisma.webhookScheduledTriggers.create({
       data: {

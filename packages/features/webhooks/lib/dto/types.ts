@@ -53,6 +53,7 @@ export interface BookingCancelledDTO extends BaseEventDTO {
   cancelledBy?: string;
   cancellationReason?: string;
   requestReschedule?: boolean;
+  metadata?: Record<string, unknown>;
 }
 
 export interface BookingRejectedDTO extends BaseEventDTO {
@@ -533,7 +534,7 @@ export type OOOEntryPayloadType = {
 export type EventPayloadType = CalendarEvent &
   TranscriptionGeneratedPayload &
   EventTypeInfo & {
-    metadata?: { [key: string]: string | number | boolean | null };
+    metadata?: { [key: string]: string | number | boolean | null } | null;
     bookingId?: number;
     status?: string;
     smsReminderNumber?: string;

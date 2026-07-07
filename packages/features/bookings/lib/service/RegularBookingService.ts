@@ -2396,6 +2396,7 @@ async function handler(
             subscriberUrl: subscriber.subscriberUrl,
             subscriber,
             triggerEvent: WebhookTriggerEvents.MEETING_ENDED,
+            webhookData,
             isDryRun,
           })
         );
@@ -2408,6 +2409,7 @@ async function handler(
             subscriberUrl: subscriber.subscriberUrl,
             subscriber,
             triggerEvent: WebhookTriggerEvents.MEETING_STARTED,
+            webhookData,
             isDryRun,
           })
         );

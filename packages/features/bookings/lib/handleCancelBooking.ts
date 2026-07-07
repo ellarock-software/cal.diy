@@ -235,7 +235,9 @@ async function handler(input: CancelBookingInput, dependencies?: Dependencies) {
 
   const bookerUrl = process.env.NEXT_PUBLIC_WEBAPP_URL || "https://app.cal.com";
 
-  const evt: CalendarEvent = {
+  const evt: CalendarEvent & {
+    metadata?: Record<string, string | number | boolean | null> | null;
+  } = {
     bookerUrl,
     title: bookingToDelete?.title,
     length: bookingToDelete?.eventType?.length,
@@ -272,6 +274,12 @@ async function handler(input: CancelBookingInput, dependencies?: Dependencies) {
       : bookingToDelete?.user.destinationCalendar
         ? [bookingToDelete?.user.destinationCalendar]
         : [],
+    metadata:
+      typeof bookingToDelete.metadata === "object" &&
+      bookingToDelete.metadata !== null &&
+      !Array.isArray(bookingToDelete.metadata)
+        ? (bookingToDelete.metadata as Record<string, string | number | boolean | null>)
+        : null,
     cancellationReason: cancellationReason,
     seatsPerTimeSlot: bookingToDelete.eventType?.seatsPerTimeSlot,
     seatsShowAttendees: bookingToDelete.eventType?.seatsShowAttendees,

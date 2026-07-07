@@ -82,7 +82,7 @@ export type EventPayloadType = Omit<CalendarEvent, "assignmentReason"> &
   TranscriptionGeneratedPayload &
   EventTypeInfo & {
     uid?: string | null;
-    metadata?: { [key: string]: string | number | boolean | null };
+    metadata?: { [key: string]: string | number | boolean | null } | null;
     bookingId?: number;
     status?: string;
     smsReminderNumber?: string;
@@ -214,16 +214,20 @@ export function isEventPayload(data: WebhookPayloadType): data is EventPayloadTy
   return !isNoShowPayload(data) && !isOOOEntryPayload(data);
 }
 
-const sendPayload = async (
-  secretKey: string | null,
-  triggerEvent: string,
-  createdAt: string,
-  webhook: WebhookForPayload,
-  data: WebhookPayloadType
-) => {
+export function buildWebhookRequest({
+  triggerEvent,
+  createdAt,
+  webhook,
+  data,
+}: {
+  triggerEvent: string;
+  createdAt: string;
+  webhook: WebhookForPayload;
+  data: WebhookPayloadType;
+}) {
   const { appId, payloadTemplate: template } = webhook;
 
-  const contentType =
+  const contentType: ContentType =
     !template || jsonParse(template) ? "application/json" : "application/x-www-form-urlencoded";
 
   data = addUTCOffset(data);
@@ -238,19 +242,32 @@ const sendPayload = async (
   }
 
   if (body === undefined) {
+    const defaultPayload = {
+      triggerEvent: triggerEvent,
+      createdAt: createdAt,
+      payload: data,
+    };
     if (
       template &&
       (isOOOEntryPayload(data) || isEventPayload(data) || isNoShowPayload(data))
     ) {
       body = applyTemplate(template, { ...data, triggerEvent, createdAt }, contentType);
     } else {
-      body = JSON.stringify({
-        triggerEvent: triggerEvent,
-        createdAt: createdAt,
-        payload: data,
-      });
+      body = JSON.stringify(defaultPayload);
     }
   }
+
+  return { body, contentType };
+}
+
+const sendPayload = async (
+  secretKey: string | null,
+  triggerEvent: string,
+  createdAt: string,
+  webhook: WebhookForPayload,
+  data: WebhookPayloadType
+) => {
+  const { body, contentType } = buildWebhookRequest({ triggerEvent, createdAt, webhook, data });
 
   return _sendPayload(secretKey, webhook, body, contentType);
 };
@@ -272,7 +289,7 @@ export const sendGenericWebhookPayload = async ({
 }) => {
   const { payloadTemplate: template } = webhook;
 
-  const contentType =
+  const contentType: ContentType =
     !template || jsonParse(template) ? "application/json" : "application/x-www-form-urlencoded";
 
   const defaultPayload = {

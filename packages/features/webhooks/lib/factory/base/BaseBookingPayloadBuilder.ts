@@ -9,11 +9,14 @@ import type { IBookingPayloadBuilder } from "../versioned/PayloadBuilderFactory"
  * Extra data shape per booking trigger event
  */
 export type BookingExtraDataMap = {
-  [WebhookTriggerEvents.BOOKING_CREATED]: null;
+  [WebhookTriggerEvents.BOOKING_CREATED]: {
+    metadata?: { [key: string]: string | number | boolean | null };
+  } | null;
   [WebhookTriggerEvents.BOOKING_CANCELLED]: {
     cancelledBy?: string;
     cancellationReason?: string;
     requestReschedule?: boolean;
+    metadata?: { [key: string]: string | number | boolean | null };
   };
   [WebhookTriggerEvents.BOOKING_REQUESTED]: {
     metadata?: { [key: string]: string | number | boolean | null };

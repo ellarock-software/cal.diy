@@ -12,6 +12,7 @@ import {
 } from "@calcom/testing/lib/bookingScenario/bookingScenario";
 import {
   expectBookingCancelledWebhookToHaveBeenFired,
+  expectWebhookToHaveBeenCalledWith,
 } from "@calcom/testing/lib/bookingScenario/expects";
 import { setupAndTeardown } from "@calcom/testing/lib/bookingScenario/setupAndTeardown";
 
@@ -126,13 +127,13 @@ describe("Cancel Booking", () => {
       },
     });
 
-    expectBookingCancelledWebhookToHaveBeenFired({
-      booker,
-      organizer,
-      location: BookingLocations.CalVideo,
-      subscriberUrl: "http://my-webhook.example.com",
+    expectWebhookToHaveBeenCalledWith("http://my-webhook.example.com", {
+      triggerEvent: "BOOKING_CANCELLED",
       payload: {
         cancelledBy: organizer.email,
+        metadata: {
+          videoCallUrl: "https://existing-daily-video-call-url.example.com",
+        },
         organizer: {
           id: organizer.id,
           username: organizer.username,

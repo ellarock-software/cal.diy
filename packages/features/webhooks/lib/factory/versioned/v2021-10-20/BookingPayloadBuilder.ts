@@ -70,6 +70,9 @@ export class BookingPayloadBuilder extends BaseBookingPayloadBuilder {
           status: BookingStatus.ACCEPTED,
           triggerEvent: dto.triggerEvent,
           createdAt: dto.createdAt,
+          extra: {
+            metadata: (dto.metadata ?? {}) as { [key: string]: string | number | boolean | null },
+          },
         });
 
       case WebhookTriggerEvents.BOOKING_CANCELLED:
@@ -84,6 +87,7 @@ export class BookingPayloadBuilder extends BaseBookingPayloadBuilder {
             cancelledBy: dto.cancelledBy,
             cancellationReason: dto.cancellationReason,
             requestReschedule: dto.requestReschedule ?? false,
+            metadata: (dto.metadata ?? {}) as { [key: string]: string | number | boolean | null },
           },
         });
 
@@ -228,6 +232,9 @@ export class BookingPayloadBuilder extends BaseBookingPayloadBuilder {
       description: params.evt.description ?? params.evt.additionalNotes ?? "",
       assignmentReason: params.booking.assignmentReason ?? null,
       destinationCalendar: params.evt.destinationCalendar ?? null,
+      // Documented on every booking triggerEvent; explicit null when the
+      // trigger has no metadata source so the key is never silently omitted.
+      metadata: null,
       ...(params.extra || {}),
     };
 
