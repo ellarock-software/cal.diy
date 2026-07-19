@@ -117,3 +117,6 @@ agents/devin-knowledge.json
 
 # pagefind
 _pagefind/
+
+# Zatch autonomous supervisor runtime artifacts (hooks, per-run event logs) — never commit
+.zatch/
