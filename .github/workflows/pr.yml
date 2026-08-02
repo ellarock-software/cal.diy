@@ -37,6 +37,7 @@ jobs:
         with:
           script: |
             const trustedAssociations = ['OWNER', 'MEMBER', 'COLLABORATOR'];
+            const trustedBotLogins = ['reia-code-review-bot[bot]'];
 
             if (!context.payload.pull_request) {
               if (context.eventName === 'workflow_dispatch') {
@@ -77,6 +78,14 @@ jobs:
             }
 
             console.log(`PR #${prNumber} by ${pr.user.login} (${pr.author_association})`);
+
+            // The Zatch review app is a repository-configured automation identity.
+            // Keep this an exact login allowlist: generic Bot accounts remain untrusted.
+            if (pr.user.type === 'Bot' && trustedBotLogins.includes(pr.user.login)) {
+              console.log(`Author is the configured Zatch review bot: ${pr.user.login}`);
+              core.setOutput('is-trusted', true);
+              return;
+            }
 
             // Check 1: Is the author a trusted contributor?
             if (trustedAssociations.includes(pr.author_association)) {
@@ -461,15 +470,20 @@ jobs:
             needs.api-v2-unit-test.result != 'success' ||
             needs.security-audit.result != 'success' ||
             (needs.prepare.outputs.has-prisma-changes == 'true' && needs.check-prisma-migrations.result != 'success') ||
-              needs.build.result != 'success' ||
-              needs.build-api-v2.result != 'success' ||
-              needs.build-atoms.result != 'success' ||
-              needs.setup-db.result != 'success' ||
-              needs.integration-test.result != 'success' ||
-              needs.e2e.result != 'success' ||
-              needs.e2e-api-v2.result != 'success' ||
-              needs.e2e-embed.result != 'success' ||
-              needs.e2e-embed-react.result != 'success' ||
-              needs.e2e-app-store.result != 'success'
+            (
+              needs.prepare.outputs.run-e2e == 'true' &&
+              (
+                needs.build.result != 'success' ||
+                needs.build-api-v2.result != 'success' ||
+                needs.build-atoms.result != 'success' ||
+                needs.setup-db.result != 'success' ||
+                needs.integration-test.result != 'success' ||
+                needs.e2e.result != 'success' ||
+                needs.e2e-api-v2.result != 'success' ||
+                needs.e2e-embed.result != 'success' ||
+                needs.e2e-embed-react.result != 'success' ||
+                needs.e2e-app-store.result != 'success'
+              )
+            )
             )
           )
