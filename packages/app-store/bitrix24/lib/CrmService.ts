@@ -159,8 +159,7 @@ class Bitrix24CrmService implements CRM {
   }
 
   async getContacts({ emails }: { emails: string | string[] }): Promise<Contact[]> {
-    let requestedEmails: string[] = [emails];
-    if (Array.isArray(emails)) requestedEmails = emails;
+    const requestedEmails = Array.isArray(emails) ? emails : [emails];
     if (requestedEmails.length === 0) return [];
 
     const contacts = await this.request<BitrixContact[]>("crm.contact.list", {

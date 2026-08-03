@@ -19,6 +19,6 @@ export const bitrix24CredentialSchema: z.ZodType<{ webhookUrl: string }> = z.obj
     ),
 });
 
-export const appKeysSchema: z.ZodType<Record<string, never>> = z.object({});
+export const appKeysSchema = z.object({});
 
 export const appDataSchema: typeof eventTypeAppCardZod = eventTypeAppCardZod;
