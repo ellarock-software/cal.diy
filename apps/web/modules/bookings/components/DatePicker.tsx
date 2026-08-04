@@ -7,7 +7,6 @@ import type { DatePickerClassNames } from "@calcom/features/bookings/Booker/type
 import { DatePicker as DatePickerComponent } from "@calcom/features/calendars/components/DatePicker";
 import { useNonEmptyScheduleDays } from "@calcom/web/modules/schedules/hooks/useNonEmptyScheduleDays";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
-import type { User } from "@calcom/prisma/client";
 import type { PeriodData } from "@calcom/types/Event";
 import { useSlotsViewOnSmallScreen } from "@calcom/embed-core/embed-iframe";
 
@@ -62,7 +61,6 @@ export const DatePicker = ({
 }: {
   event: {
     data?: {
-      subsetOfUsers: Pick<User, "weekStart">[];
       periodType?: PeriodData["periodType"];
       periodStartDate?: PeriodData["periodStartDate"];
       periodEndDate?: PeriodData["periodEndDate"];

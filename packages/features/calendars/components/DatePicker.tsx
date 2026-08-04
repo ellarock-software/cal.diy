@@ -73,6 +73,15 @@ export const getWeekStartForLocale = (locale: string): CalendarWeekStart => {
   }
 };
 
+/**
+ * The viewer's own locale, resolved synchronously so the very first render
+ * already draws the correct week. This component renders a portal (the day
+ * Tooltip), so it can never be server-rendered — resolving in an effect instead
+ * would only buy a visible re-layout, with no hydration mismatch to avoid.
+ */
+export const resolveViewerLocale = (fallbackLocale: string): string =>
+  typeof window === "undefined" ? fallbackLocale : window.navigator.language || fallbackLocale;
+
 const Day = ({
   date,
   active,
@@ -414,9 +423,9 @@ const DatePicker = ({
     scrollToTimeSlots?: () => void;
   }) => {
   const minDate = passThroughProps.minDate;
-  const [viewerLocale, setViewerLocale] = useState(locale);
+  const [viewerLocale, setViewerLocale] = useState(() => resolveViewerLocale(locale));
   useEffect(() => {
-    setViewerLocale(window.navigator.language || locale);
+    setViewerLocale(resolveViewerLocale(locale));
   }, [locale]);
   const resolvedWeekStart = weekStart ?? getWeekStartForLocale(viewerLocale);
   const rawBrowsingDate = passThroughProps.browsingDate || dayjs().startOf("month");

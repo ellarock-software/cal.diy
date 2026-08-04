@@ -5,7 +5,7 @@ import { TooltipProvider } from "@radix-ui/react-tooltip";
 import { render, waitFor } from "@testing-library/react";
 import React from "react";
 import { afterEach, vi } from "vitest";
-import { DatePicker, getWeekStartForLocale } from "../components/DatePicker";
+import { DatePicker, getWeekStartForLocale, resolveViewerLocale } from "../components/DatePicker";
 
 const noop = () => {
   /* noop */
@@ -16,21 +16,57 @@ describe("Tests for DatePicker Component", () => {
     vi.restoreAllMocks();
   });
 
+  const stubWeekInfo = (weekInfo: unknown) => {
+    vi.spyOn(Intl, "Locale").mockImplementation(function Locale() {
+      return { getWeekInfo: () => weekInfo } as unknown as Intl.Locale;
+    } as typeof Intl.Locale);
+  };
+
   test("normalizes the Intl Sunday value to the calendar's zero-based index", () => {
     expect(getWeekStartForLocale("en-US")).toBe(0);
   });
 
-  test("supports the Intl getWeekInfo method", () => {
-    vi.spyOn(Intl, "Locale").mockImplementation(function Locale() {
-      return {
-        getWeekInfo: () => ({ firstDay: 6 }),
-      } as unknown as Intl.Locale;
-    } as typeof Intl.Locale);
+  // Intl reports firstDay as 1=Monday..7=Sunday; the calendar index is
+  // 0=Sunday..6=Saturday. Pin the whole mapping, not just the two locales the
+  // rendering tests happen to cover.
+  test.each([
+    [1, 1],
+    [2, 2],
+    [3, 3],
+    [4, 4],
+    [5, 5],
+    [6, 6],
+    [7, 0],
+  ])("maps Intl firstDay %i onto calendar week start %i", (firstDay, expected) => {
+    stubWeekInfo({ firstDay });
+    expect(getWeekStartForLocale("en-US")).toBe(expected);
+  });
 
+  test("supports the Intl getWeekInfo method", () => {
+    stubWeekInfo({ firstDay: 6 });
     expect(getWeekStartForLocale("en-US")).toBe(6);
   });
 
-  test("falls back to Sunday when Intl locale week information is invalid", () => {
+  // The range guard, distinct from the constructor-throws path below.
+  test.each([
+    ["undefined", undefined],
+    ["out-of-range low", 0],
+    ["out-of-range high", 8],
+    ["non-integer", 3.5],
+  ])("falls back to Sunday for an %s firstDay", (_label, firstDay) => {
+    stubWeekInfo({ firstDay });
+    expect(getWeekStartForLocale("en-US")).toBe(0);
+  });
+
+  test("falls back to Sunday when the locale itself is absent from week info", () => {
+    stubWeekInfo(undefined);
+    expect(getWeekStartForLocale("en-US")).toBe(0);
+  });
+
+  test("falls back to Sunday when constructing the Intl locale throws", () => {
+    // `new Intl.Locale("not-a-valid_locale")` throws RangeError, so this
+    // exercises the catch, not the week-info range guard above.
+    expect(() => new Intl.Locale("not-a-valid_locale")).toThrow();
     expect(getWeekStartForLocale("not-a-valid_locale")).toBe(0);
   });
 
@@ -71,6 +107,38 @@ describe("Tests for DatePicker Component", () => {
   test("keeps an explicit week start authoritative over the viewer locale", async () => {
     const headingGrid = renderWeekdayHeadings({ viewerLocale: "en-GB", weekStart: 2 });
     await waitFor(() => expect(headingGrid.children[0]).toHaveTextContent("Tue"));
+  });
+
+  // The viewer's week must be resolved on the very first render, not in an
+  // effect: this component renders a portal (the day Tooltip), so it is
+  // client-only and an effect-deferred value would only produce a visible
+  // re-layout. The two tests below pin both halves of that argument.
+  test("resolves the viewer locale synchronously, with no effect tick", () => {
+    vi.spyOn(window.navigator, "language", "get").mockReturnValue("en-GB");
+    expect(resolveViewerLocale("en-US")).toBe("en-GB");
+  });
+
+  test("resolveViewerLocale falls back to the passed locale off the browser", () => {
+    vi.spyOn(window.navigator, "language", "get").mockReturnValue("");
+    expect(resolveViewerLocale("en-US")).toBe("en-US");
+  });
+
+  test("the DatePicker is client-only, so there is no hydration pass to match", async () => {
+    const { renderToString } = await import("react-dom/server");
+    expect(() =>
+      renderToString(
+        <BookerStoreProvider>
+          <DatePicker onChange={noop} browsingDate={dayjs("2024-01-01")} locale="en-US" />
+        </BookerStoreProvider>
+      )
+    ).toThrow(/Portals are not currently supported by the server renderer/);
+  });
+
+  test("reads the Intl weekInfo accessor when getWeekInfo is unavailable", () => {
+    vi.spyOn(Intl, "Locale").mockImplementation(function Locale() {
+      return { weekInfo: { firstDay: 1 } } as unknown as Intl.Locale;
+    } as typeof Intl.Locale);
+    expect(getWeekStartForLocale("en-GB")).toBe(1);
   });
 
   test("Should render correctly with default date", async () => {
