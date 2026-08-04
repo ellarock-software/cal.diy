@@ -2346,12 +2346,21 @@ describe("handleNewBooking", () => {
                   uid: uidOfBookingToBeRescheduled,
                   eventTypeId: 1,
                   userId: 101,
+                  title: `${booker.name} and ${roundRobinHost1.name}: Team Meeting`,
                   status: BookingStatus.ACCEPTED,
                   startTime: `${plus1DateString}T05:00:00.000Z`,
                   endTime: `${plus1DateString}T05:15:00.000Z`,
                   metadata: {
                     videoCallUrl: "https://existing-daily-video-call-url.example.com",
                   },
+                },
+                {
+                  uid: "host1-busy-at-reschedule-target",
+                  eventTypeId: 1,
+                  userId: roundRobinHost1.id,
+                  status: BookingStatus.ACCEPTED,
+                  startTime: `${plus1DateString}T04:00:00.000Z`,
+                  endTime: `${plus1DateString}T04:15:00.000Z`,
                 },
               ],
               organizer: roundRobinHost1,
@@ -2419,8 +2428,9 @@ describe("handleNewBooking", () => {
            */
           expect(createdBooking.startTime?.toISOString()).toBe(`${plus1DateString}T04:00:00.000Z`);
           expect(createdBooking.endTime?.toISOString()).toBe(`${plus1DateString}T04:15:00.000Z`);
+          expect(createdBooking.userId).toBe(roundRobinHost2.id);
 
-          expect(createdBooking.title).toBe(`${booker.name} and ${roundRobinHost1.name}: Team Meeting`);
+          expect(createdBooking.title).toBe(`${booker.name} and ${roundRobinHost2.name}: Team Meeting`);
 
           await expectBookingInDBToBeRescheduledFromTo({
             from: {
@@ -2440,7 +2450,7 @@ describe("handleNewBooking", () => {
             },
           });
 
-          expectSuccessfulRoundRobinReschedulingEmails({
+          await expectSuccessfulRoundRobinReschedulingEmails({
             prevOrganizer: roundRobinHost1,
             newOrganizer: roundRobinHost2,
             emails,
@@ -2589,7 +2599,7 @@ describe("handleNewBooking", () => {
             },
           });
 
-          expectSuccessfulRoundRobinReschedulingEmails({
+          await expectSuccessfulRoundRobinReschedulingEmails({
             prevOrganizer: roundRobinHost1,
             newOrganizer: roundRobinHost1, // Round robin host 2 is not available and it will be rescheduled to same user
             emails,
@@ -2790,7 +2800,7 @@ describe("handleNewBooking", () => {
             },
           });
 
-          expectSuccessfulRoundRobinReschedulingEmails({
+          await expectSuccessfulRoundRobinReschedulingEmails({
             prevOrganizer: roundRobinHost1,
             newOrganizer: roundRobinHost1, // Round robin host 2 is not available and it will be rescheduled to same user
             emails,
@@ -2800,7 +2810,7 @@ describe("handleNewBooking", () => {
       );
 
       test(
-        "should reschedule event with same round robin host",
+        "should reassign when the removed same-round-robin-host option is ignored",
         async ({ emails }) => {
           const handleNewBooking = getNewBookingHandler();
           const booker = getBooker({
@@ -2948,8 +2958,8 @@ describe("handleNewBooking", () => {
             },
           });
 
-          expectSuccessfulRoundRobinReschedulingEmails({
-            prevOrganizer: roundRobinHost1,
+          await expectSuccessfulRoundRobinReschedulingEmails({
+            prevOrganizer: roundRobinHost2,
             newOrganizer: roundRobinHost1,
             emails,
           });
@@ -3105,7 +3115,7 @@ describe("handleNewBooking", () => {
             },
           });
 
-          expectSuccessfulRoundRobinReschedulingEmails({
+          await expectSuccessfulRoundRobinReschedulingEmails({
             prevOrganizer: hostOfOriginalBooking,
             newOrganizer: otherHost,
             emails,
