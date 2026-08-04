@@ -26,7 +26,6 @@ import type { Slot } from "~/schedules/lib/types";
 import { useNonEmptyScheduleDays } from "@calcom/web/modules/schedules/hooks/useNonEmptyScheduleDays";
 import { useSlotsForDate } from "@calcom/web/modules/schedules/hooks/useSlotsForDate";
 import { APP_NAME, DEFAULT_LIGHT_BRAND_COLOR, DEFAULT_DARK_BRAND_COLOR } from "@calcom/lib/constants";
-import { weekdayToWeekIndex } from "@calcom/lib/dayjs";
 import { useCompatSearchParams } from "@calcom/lib/hooks/useCompatSearchParams";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { BookerLayouts } from "@calcom/prisma/zod-utils";
@@ -402,7 +401,6 @@ const EmailEmbed = ({
               locale={i18n.language}
               browsingDate={month ? dayjs(month) : undefined}
               selected={dayjs(selectedDate)}
-              weekStart={weekdayToWeekIndex(event?.data?.subsetOfUsers?.[0]?.weekStart)}
               eventSlug={eventType?.slug}
             />
           </CollapsibleContent>

@@ -1,10 +1,8 @@
-import React from "react";
-import { vi, afterEach } from "vitest";
-
 import dayjs from "@calcom/dayjs";
-import { DatePicker as DatePickerComponent } from "@calcom/features/calendars/components/DatePicker";
-
 import { render } from "@calcom/features/bookings/Booker/__tests__/test-utils";
+import { DatePicker as DatePickerComponent } from "@calcom/features/calendars/components/DatePicker";
+import React from "react";
+import { afterEach, vi } from "vitest";
 import { DatePicker } from "./DatePicker";
 
 vi.mock("@calcom/features/calendars/components/DatePicker", () => {
@@ -28,6 +26,25 @@ describe("Tests for DatePicker Component", () => {
     expect(DatePickerComponent).toHaveBeenCalledWith(
       expect.objectContaining({
         isLoading: true,
+      }),
+      expect.anything()
+    );
+  });
+
+  test("does not pass the organizer week-start preference to the viewer calendar", async () => {
+    render(
+      <DatePicker
+        event={{
+          data: {
+            subsetOfUsers: [{ weekStart: "Monday" }],
+          },
+        }}
+      />
+    );
+
+    expect(DatePickerComponent).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        weekStart: expect.anything(),
       }),
       expect.anything()
     );

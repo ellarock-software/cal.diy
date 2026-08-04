@@ -6,7 +6,6 @@ import { useBookerStoreContext } from "@calcom/features/bookings/Booker/BookerSt
 import type { DatePickerClassNames } from "@calcom/features/bookings/Booker/types";
 import { DatePicker as DatePickerComponent } from "@calcom/features/calendars/components/DatePicker";
 import { useNonEmptyScheduleDays } from "@calcom/web/modules/schedules/hooks/useNonEmptyScheduleDays";
-import { weekdayToWeekIndex } from "@calcom/lib/dayjs";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import type { User } from "@calcom/prisma/client";
 import type { PeriodData } from "@calcom/types/Event";
@@ -160,7 +159,6 @@ export const DatePicker = ({
       locale={i18n.language}
       browsingDate={month ? dayjs(month) : undefined}
       selected={dayjs(selectedDate)}
-      weekStart={weekdayToWeekIndex(event?.data?.subsetOfUsers?.[0]?.weekStart)}
       slots={slots}
       scrollToTimeSlots={scrollToTimeSlots}
       periodData={periodData}

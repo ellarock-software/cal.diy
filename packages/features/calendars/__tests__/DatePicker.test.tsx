@@ -1,19 +1,78 @@
-import { TooltipProvider } from "@radix-ui/react-tooltip";
-import { render } from "@testing-library/react";
-import React from "react";
-import { vi } from "vitest";
-
 import dayjs from "@calcom/dayjs";
 import { BookerStoreProvider } from "@calcom/features/bookings/Booker/BookerStoreProvider";
 import { PeriodType } from "@calcom/prisma/enums";
-
-import { DatePicker } from "../components/DatePicker";
+import { TooltipProvider } from "@radix-ui/react-tooltip";
+import { render, waitFor } from "@testing-library/react";
+import React from "react";
+import { afterEach, vi } from "vitest";
+import { DatePicker, getWeekStartForLocale } from "../components/DatePicker";
 
 const noop = () => {
   /* noop */
 };
 
 describe("Tests for DatePicker Component", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test("normalizes the Intl Sunday value to the calendar's zero-based index", () => {
+    expect(getWeekStartForLocale("en-US")).toBe(0);
+  });
+
+  test("supports the Intl getWeekInfo method", () => {
+    vi.spyOn(Intl, "Locale").mockImplementation(function Locale() {
+      return {
+        getWeekInfo: () => ({ firstDay: 6 }),
+      } as unknown as Intl.Locale;
+    } as typeof Intl.Locale);
+
+    expect(getWeekStartForLocale("en-US")).toBe(6);
+  });
+
+  test("falls back to Sunday when Intl locale week information is invalid", () => {
+    expect(getWeekStartForLocale("not-a-valid_locale")).toBe(0);
+  });
+
+  const renderWeekdayHeadings = ({
+    viewerLocale,
+    weekStart,
+  }: {
+    viewerLocale: string;
+    weekStart?: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  }) => {
+    vi.spyOn(window.navigator, "language", "get").mockReturnValue(viewerLocale);
+    const result = render(
+      <BookerStoreProvider>
+        <TooltipProvider>
+          <DatePicker
+            onChange={noop}
+            browsingDate={dayjs("2024-01-01")}
+            locale="en-US"
+            weekStart={weekStart}
+          />
+        </TooltipProvider>
+      </BookerStoreProvider>
+    );
+
+    const headingGrid = result.container.querySelector(".grid-cols-7");
+    if (!headingGrid) throw new Error("Expected the weekday heading grid");
+    return headingGrid;
+  };
+
+  test.each([
+    ["en-US", "Sun"],
+    ["en-GB", "Mon"],
+  ])("starts the calendar using the %s viewer locale", async (viewerLocale, firstHeading) => {
+    const headingGrid = renderWeekdayHeadings({ viewerLocale });
+    await waitFor(() => expect(headingGrid.children[0]).toHaveTextContent(firstHeading));
+  });
+
+  test("keeps an explicit week start authoritative over the viewer locale", async () => {
+    const headingGrid = renderWeekdayHeadings({ viewerLocale: "en-GB", weekStart: 2 });
+    await waitFor(() => expect(headingGrid.children[0]).toHaveTextContent("Tue"));
+  });
+
   test("Should render correctly with default date", async () => {
     const testDate = dayjs("2024-02-20");
     const { getByTestId } = render(

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { shallow } from "zustand/shallow";
 
 import type { Dayjs } from "@calcom/dayjs";
@@ -51,6 +51,26 @@ export type DatePickerProps = {
   isCompact?: boolean;
   // Whether to show the no availability dialog
   showNoAvailabilityDialog?: boolean;
+};
+
+type CalendarWeekStart = NonNullable<DatePickerProps["weekStart"]>;
+type LocaleWeekInfo = {
+  firstDay?: number;
+};
+type LocaleWithWeekInfo = Intl.Locale & {
+  getWeekInfo?: () => LocaleWeekInfo;
+  weekInfo?: LocaleWeekInfo;
+};
+
+export const getWeekStartForLocale = (locale: string): CalendarWeekStart => {
+  try {
+    const localeWithWeekInfo = new Intl.Locale(locale) as LocaleWithWeekInfo;
+    const firstDay = localeWithWeekInfo.getWeekInfo?.().firstDay ?? localeWithWeekInfo.weekInfo?.firstDay;
+    if (!Number.isInteger(firstDay) || firstDay === undefined || firstDay < 1 || firstDay > 7) return 0;
+    return (firstDay % 7) as CalendarWeekStart;
+  } catch {
+    return 0;
+  }
 };
 
 const Day = ({
@@ -364,7 +384,7 @@ const Days = ({
 };
 
 const DatePicker = ({
-  weekStart = 0,
+  weekStart,
   className,
   locale,
   selected,
@@ -394,6 +414,11 @@ const DatePicker = ({
     scrollToTimeSlots?: () => void;
   }) => {
   const minDate = passThroughProps.minDate;
+  const [viewerLocale, setViewerLocale] = useState(locale);
+  useEffect(() => {
+    setViewerLocale(window.navigator.language || locale);
+  }, [locale]);
+  const resolvedWeekStart = weekStart ?? getWeekStartForLocale(viewerLocale);
   const rawBrowsingDate = passThroughProps.browsingDate || dayjs().startOf("month");
   const browsingDate =
     minDate && rawBrowsingDate.valueOf() < minDate.valueOf() ? dayjs(minDate) : rawBrowsingDate;
@@ -463,7 +488,7 @@ const DatePicker = ({
         </div>
       </div>
       <div className="border-subtle mb-2 grid grid-cols-7 gap-4 border-b border-t text-center md:mb-0 md:border-0">
-        {weekdayNames(locale, weekStart, "short").map((weekDay) => (
+        {weekdayNames(locale, resolvedWeekStart, "short").map((weekDay) => (
           <div
             key={weekDay}
             className={classNames(
@@ -480,7 +505,7 @@ const DatePicker = ({
             datePickerDate: customClassNames?.datePickersDates,
             datePickerDateActive: customClassNames?.datePickerDatesActive,
           }}
-          weekStart={weekStart}
+          weekStart={resolvedWeekStart}
           selected={selected}
           {...passThroughProps}
           browsingDate={browsingDate}
