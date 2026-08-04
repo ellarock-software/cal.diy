@@ -7,6 +7,7 @@ import type { DatePickerClassNames } from "@calcom/features/bookings/Booker/type
 import { DatePicker as DatePickerComponent } from "@calcom/features/calendars/components/DatePicker";
 import { useNonEmptyScheduleDays } from "@calcom/web/modules/schedules/hooks/useNonEmptyScheduleDays";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
+import type { User } from "@calcom/prisma/client";
 import type { PeriodData } from "@calcom/types/Event";
 import { useSlotsViewOnSmallScreen } from "@calcom/embed-core/embed-iframe";
 
@@ -61,6 +62,12 @@ export const DatePicker = ({
 }: {
   event: {
     data?: {
+      // Load-bearing, not dead: `event` is handed straight through from
+      // BookerEventQuery, and dropping this member makes the target a weak
+      // type that BookerEventQuery no longer satisfies (CI tsc TS2322 at
+      // Booker.tsx:436/473). It is deliberately NOT forwarded as weekStart —
+      // the DatePicker.test.tsx case asserts exactly that.
+      subsetOfUsers: Pick<User, "weekStart">[];
       periodType?: PeriodData["periodType"];
       periodStartDate?: PeriodData["periodStartDate"];
       periodEndDate?: PeriodData["periodEndDate"];

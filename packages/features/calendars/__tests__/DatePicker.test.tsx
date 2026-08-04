@@ -48,9 +48,14 @@ describe("Tests for DatePicker Component", () => {
   });
 
   // The range guard, distinct from the constructor-throws path below.
+  // `0` alone cannot discriminate the `firstDay < 1` half of the guard: 0 % 7
+  // is 0, the same value as the fallback, so a negative case is required to
+  // make deleting that clause fail.
   test.each([
     ["undefined", undefined],
     ["out-of-range low", 0],
+    ["negative", -1],
+    ["negative multiple of seven", -7],
     ["out-of-range high", 8],
     ["non-integer", 3.5],
   ])("falls back to Sunday for an %s firstDay", (_label, firstDay) => {
@@ -109,29 +114,41 @@ describe("Tests for DatePicker Component", () => {
     await waitFor(() => expect(headingGrid.children[0]).toHaveTextContent("Tue"));
   });
 
-  // The viewer's week must be resolved on the very first render, not in an
-  // effect: this component renders a portal (the day Tooltip), so it is
-  // client-only and an effect-deferred value would only produce a visible
-  // re-layout. The two tests below pin both halves of that argument.
-  test("resolves the viewer locale synchronously, with no effect tick", () => {
+  test("resolveViewerLocale reads the browser locale", () => {
     vi.spyOn(window.navigator, "language", "get").mockReturnValue("en-GB");
     expect(resolveViewerLocale("en-US")).toBe("en-GB");
   });
 
-  test("resolveViewerLocale falls back to the passed locale off the browser", () => {
+  test("resolveViewerLocale falls back to the passed locale when the browser reports none", () => {
     vi.spyOn(window.navigator, "language", "get").mockReturnValue("");
     expect(resolveViewerLocale("en-US")).toBe("en-US");
   });
 
-  test("the DatePicker is client-only, so there is no hydration pass to match", async () => {
+  // This component IS server-rendered on the public booking page, so the server
+  // pass and the hydration render must agree. weekStart drives both the header
+  // order and the count of leading null cells, so resolving navigator.language
+  // during render would be a structural hydration mismatch, not a text diff.
+  // Browsing a future month keeps `showNextMonthDays` false on every calendar
+  // date, so the day Tooltip's portal never blocks renderToString here.
+  test("the server pass follows the passed locale, not the browser locale", async () => {
     const { renderToString } = await import("react-dom/server");
-    expect(() =>
-      renderToString(
-        <BookerStoreProvider>
-          <DatePicker onChange={noop} browsingDate={dayjs("2024-01-01")} locale="en-US" />
-        </BookerStoreProvider>
-      )
-    ).toThrow(/Portals are not currently supported by the server renderer/);
+    vi.spyOn(window.navigator, "language", "get").mockReturnValue("en-GB");
+
+    const markup = renderToString(
+      <BookerStoreProvider>
+        <DatePicker
+          onChange={noop}
+          browsingDate={dayjs().add(2, "month").startOf("month")}
+          locale="en-US"
+        />
+      </BookerStoreProvider>
+    );
+
+    const headings = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+      .map((day) => [day, markup.indexOf(`>${day}<`)] as const)
+      .filter(([, index]) => index >= 0)
+      .sort((a, b) => a[1] - b[1]);
+    expect(headings[0]?.[0]).toBe("Sun");
   });
 
   test("reads the Intl weekInfo accessor when getWeekInfo is unavailable", () => {

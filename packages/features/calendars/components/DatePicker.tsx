@@ -74,10 +74,20 @@ export const getWeekStartForLocale = (locale: string): CalendarWeekStart => {
 };
 
 /**
- * The viewer's own locale, resolved synchronously so the very first render
- * already draws the correct week. This component renders a portal (the day
- * Tooltip), so it can never be server-rendered — resolving in an effect instead
- * would only buy a visible re-layout, with no hydration mismatch to avoid.
+ * The viewer's own locale, or `fallbackLocale` when the browser reports none.
+ *
+ * This is deliberately NOT called during render. The public booking page is
+ * server-rendered — apps/web/app/(booking-page-wrapper)/[user]/[type]/page.tsx
+ * is an App Router server page and nothing wraps the Booker in `ssr: false`, so
+ * Next.js emits this component's markup into the initial HTML. `weekStart`
+ * changes the weekday header order AND the number of leading null cells in the
+ * grid, so resolving `navigator.language` in a lazy useState initializer would
+ * produce a structural hydration mismatch exactly when the viewer and organizer
+ * locales disagree — the case this whole feature exists to serve.
+ *
+ * The cost is one effect tick of the organizer's week on first paint. Removing
+ * that needs the request's Accept-Language plumbed down to this component,
+ * which is a larger change than this fix.
  */
 export const resolveViewerLocale = (fallbackLocale: string): string =>
   typeof window === "undefined" ? fallbackLocale : window.navigator.language || fallbackLocale;
@@ -423,7 +433,9 @@ const DatePicker = ({
     scrollToTimeSlots?: () => void;
   }) => {
   const minDate = passThroughProps.minDate;
-  const [viewerLocale, setViewerLocale] = useState(() => resolveViewerLocale(locale));
+  // Server pass and hydration render both use `locale`; the effect below
+  // corrects to the viewer's locale after mount. See resolveViewerLocale.
+  const [viewerLocale, setViewerLocale] = useState(locale);
   useEffect(() => {
     setViewerLocale(resolveViewerLocale(locale));
   }, [locale]);
