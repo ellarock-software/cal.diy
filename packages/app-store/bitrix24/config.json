@@ -1,0 +1,18 @@
+{
+  "/*": "Don't modify slug - If required, do it using cli edit command",
+  "name": "Bitrix24",
+  "title": "Bitrix24 CRM",
+  "slug": "bitrix24",
+  "type": "bitrix24_crm",
+  "logo": "icon.svg",
+  "url": "https://www.bitrix24.com/",
+  "variant": "crm",
+  "categories": ["crm"],
+  "publisher": "Cal.com, Inc.",
+  "extendsFeature": "EventType",
+  "email": "help@cal.com",
+  "description": "Create and keep Bitrix24 CRM contacts and calendar events in sync with Cal.com bookings.",
+  "__createdUsingCli": true,
+  "isOAuth": false,
+  "dirName": "bitrix24"
+}

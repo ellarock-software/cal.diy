@@ -3,6 +3,7 @@
     Don't modify this file manually.
 **/
 export const CrmServiceMap = {
+  bitrix24: import("./bitrix24/lib/CrmService"),
   closecom: import("./closecom/lib/CrmService"),
   hubspot: import("./hubspot/lib/CrmService"),
   "pipedrive-crm": import("./pipedrive-crm/lib/CrmService"),
